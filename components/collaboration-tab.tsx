@@ -458,24 +458,79 @@ export function CollaborationTab() {
 
                 {profile?.role === "student" &&
                   (collaboration.collaboration_members || []).some(m => m.user_id === profile.id) && (
-                    <Button
-                      size="sm"
-                      className="w-full mt-2"
-                      onClick={async () => {
-                        // Find the chat room for this collaboration
-                        const { data: chatRoom } = await supabase
-                          .from('chat_rooms')
-                          .select('id')
-                          .eq('reference_id', collaboration.id)
-                          .eq('type', 'collaboration')
-                          .single();
-                        if (chatRoom) {
-                          router.push(`/chat/${chatRoom.id}`);
-                        }
-                      }}
-                    >
-                      Open Chat
-                    </Button>
+                    <>
+                      <span className="text-green-600 font-semibold block w-full text-center">Collaborator</span>
+                      <Button
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={async () => {
+                          // 1. Find or create the chat room for this collaboration
+                          let { data: chatRoom, error: chatRoomError } = await supabase
+                            .from('chat_rooms')
+                            .select('id')
+                            .eq('reference_id', collaboration.id)
+                            .eq('type', 'collaboration')
+                            .single();
+
+                          if (!chatRoom) {
+                            // Create the chat room if it doesn't exist
+                            const { data: newRoom, error: createRoomError } = await supabase
+                              .from('chat_rooms')
+                              .insert([
+                                {
+                                  name: collaboration.title,
+                                  type: 'collaboration',
+                                  reference_id: collaboration.id,
+                                  created_by: profile.id,
+                                }
+                              ])
+                              .select()
+                              .single();
+                            if (createRoomError || !newRoom) {
+                              toast({
+                                title: "Error",
+                                description: createRoomError?.message || "Failed to create chat room.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            chatRoom = newRoom;
+                          }
+
+                          if (!chatRoom) return; // Extra safety
+
+                          // 2. Ensure the user is a participant
+                          const { data: participant } = await supabase
+                            .from('chat_participants')
+                            .select('id')
+                            .eq('room_id', chatRoom.id)
+                            .eq('user_id', profile.id)
+                            .single();
+
+                          if (!participant) {
+                            // Add user as participant if not already
+                            const { error: addParticipantError } = await supabase
+                              .from('chat_participants')
+                              .insert([
+                                { room_id: chatRoom.id, user_id: profile.id }
+                              ]);
+                            if (addParticipantError) {
+                              toast({
+                                title: "Error",
+                                description: addParticipantError.message || "Failed to join chat room.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                          }
+
+                          // 3. Open the group chat modal or section (for now, redirect to chat room page)
+                          if (chatRoom) router.push(`/chat/${chatRoom.id}`);
+                        }}
+                      >
+                        Chat
+                      </Button>
+                    </>
                   )}
               </div>
             </CardContent>

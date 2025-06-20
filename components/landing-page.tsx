@@ -8,13 +8,27 @@ import { AuthModal } from "@/components/auth-modal"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import { Chat } from "@/components/chat"
+import { toast } from "@/components/ui/use-toast"
+import { useAuth } from "@/contexts/auth-context"
+
+interface Collaboration {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  requester_id: string;
+  status: string;
+  collaboration_members: { user_id: string }[];
+  requester?: { full_name: string };
+}
 
 export function LandingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin")
-  const [collaborations, setCollaborations] = useState([])
-  const [collaborationError, setCollaborationError] = useState(null)
+  const [collaborations, setCollaborations] = useState<Collaboration[]>([])
+  const [collaborationError, setCollaborationError] = useState<null | any>(null)
   const router = useRouter()
+  const { profile } = useAuth()
 
   const handleGetStarted = () => {
     setAuthMode("signup")
@@ -25,11 +39,6 @@ export function LandingPage() {
     setAuthMode("signin")
     setShowAuthModal(true)
   }
-
-  const isCreator = collaboration.requester_id === profile.id;
-  const isMember = collaboration.collaboration_members?.some(
-    (member) => member.user_id === profile.id
-  );
 
   const handleJoinCollaboration = async (collaborationId) => {
     const { error } = await supabase.from('collaboration_members').insert([
@@ -68,12 +77,7 @@ export function LandingPage() {
         .select(`
           *,
           requester:requester_id (
-            full_name,
-            role
-          ),
-          mentor:mentor_id (
-            full_name,
-            role
+            full_name
           ),
           collaboration_members (
             user_id
@@ -88,30 +92,25 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
-      <header className="container mx-auto px-4 py-6">
-        <nav className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Users className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900 dark:text-white">CampusConnect</span>
-          </div>
-          <Button onClick={handleSignIn} variant="outline">
+      <header className="px-0 py-8">
+        <nav className="flex items-center justify-between w-full max-w-7xl mx-auto">
+          <span className="text-3xl md:text-4xl font-extrabold tracking-tight text-blue-700 drop-shadow-sm">CampusConnect</span>
+          <Button onClick={handleSignIn} className="px-6 py-2 rounded-full border border-blue-500 text-blue-600 font-semibold bg-white hover:bg-blue-50 transition shadow-none">
             Sign In
           </Button>
         </nav>
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">
+      <section className="relative bg-gradient-to-br from-blue-50 to-indigo-100 py-24 text-center overflow-hidden">
+        {/* Optional SVG or animated background here */}
+        <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 drop-shadow mb-4">
           Connect, Collaborate, <span className="text-blue-600">Learn</span>
         </h1>
-        <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
-          Bridge the gap between students and faculty with CampusConnect. Join study groups, find mentors, attend
-          events, and collaborate on projects that matter.
+        <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
+          Bridge the gap between students and faculty with CampusConnect. Join study groups, find mentors, attend events, and collaborate on projects that matter.
         </p>
-        <Button onClick={handleGetStarted} size="lg" className="text-lg px-8 py-3">
+        <Button onClick={handleGetStarted} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-8 py-3 rounded-full text-lg font-semibold shadow-lg hover:scale-105 transition">
           Get Started
         </Button>
       </section>
@@ -122,13 +121,13 @@ export function LandingPage() {
           Everything You Need to Succeed
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card>
-            <CardHeader>
-              <Calendar className="w-10 h-10 text-blue-600 mb-2" />
-              <CardTitle>Events & Workshops</CardTitle>
-              <CardDescription>Discover and register for academic events, workshops, and competitions</CardDescription>
-            </CardHeader>
-          </Card>
+          <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transition group">
+            <div className="w-12 h-12 flex items-center justify-center rounded-full bg-blue-100 mb-4 group-hover:bg-blue-200 transition">
+              <Calendar className="text-blue-600 w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">Events & Workshops</h3>
+            <p className="text-gray-500">Discover and register for academic events, workshops, and competitions</p>
+          </div>
 
           <Card>
             <CardHeader>
@@ -169,42 +168,122 @@ export function LandingPage() {
               <CardDescription>Showcase your projects, research, and achievements</CardDescription>
             </CardHeader>
           </Card>
-
-          {profile?.role === "student" &&
-            collaboration.status === "open" &&
-            collaboration.requester_id !== profile.id &&
-            !(collaboration.collaboration_members || []).some(m => m.user_id === profile.id) && (
-              <Button
-                size="sm"
-                onClick={async () => {
-                  await supabase.from('collaboration_members').insert([
-                    { collaboration_id: collaboration.id, user_id: profile.id }
-                  ]);
-                  fetchCollaborations();
-                }}
-                className="w-full"
-              >
-                Contribute
-              </Button>
-            )
-          }
-          {profile && (collaboration.collaboration_members || []).some(m => m.user_id === profile.id) && (
-            <>
-              <span className="text-green-600 font-semibold block w-full text-center">You're a contributor</span>
-              <Button
-                size="sm"
-                className="w-full mt-2"
-                onClick={() => {
-                  console.log("Test button clicked!");
-                  alert("Test button clicked!");
-                  router.push("/chat/test");
-                }}
-              >
-                Test Open Chat
-              </Button>
-            </>
-          )}
         </div>
+        {/* Collaboration List */}
+        {profile && (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
+            {collaborations.map((collaboration) => {
+              if (!profile) return null;
+              console.log(
+                "profile.id:", profile.id,
+                "collaboration_members:", collaboration.collaboration_members
+              );
+              // Show chat for all members (including creator)
+              const isMember = (collaboration.collaboration_members?.some(
+                (member) => member.user_id === profile.id
+              ) || collaboration.requester_id === profile.id);
+              console.log("isMember:", isMember);
+              return (
+                <Card key={collaboration.id}>
+                  <CardHeader>
+                    <CardTitle>{collaboration.title}</CardTitle>
+                    <CardDescription>by {collaboration.requester?.full_name}</CardDescription>
+                  </CardHeader>
+                  <CardDescription>{collaboration.description}</CardDescription>
+                  {/* Show Contribute button if not a member and not creator */}
+                  {profile.role === "student" &&
+                    collaboration.status === "open" &&
+                    collaboration.requester_id !== profile.id &&
+                    !isMember && (
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          await supabase.from('collaboration_members').insert([
+                            { collaboration_id: collaboration.id, user_id: profile.id }
+                          ]);
+                          fetchCollaborations();
+                        }}
+                        className="w-full mt-2"
+                      >
+                        Contribute
+                      </Button>
+                    )}
+                  {/* Show Collaborator or Mentor label and Chat button for all members */}
+                  {isMember && (
+                    <>
+                      <span className="text-green-600 font-semibold block w-full text-center">
+                        {profile.role === "faculty" ? "Mentor" : "Collaborator"}
+                      </span>
+                      <Button
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={async () => {
+                          // 1. Find or create the chat room for this collaboration
+                          let { data: chatRoom } = await supabase
+                            .from('chat_rooms')
+                            .select('id')
+                            .eq('reference_id', collaboration.id)
+                            .eq('type', 'collaboration')
+                            .single();
+                          if (!chatRoom) {
+                            const { data: newRoom, error: createRoomError } = await supabase
+                              .from('chat_rooms')
+                              .insert([
+                                {
+                                  name: collaboration.title,
+                                  type: 'collaboration',
+                                  reference_id: collaboration.id,
+                                  created_by: profile.id,
+                                }
+                              ])
+                              .select()
+                              .single();
+                            if (createRoomError || !newRoom) {
+                              toast({
+                                title: "Error",
+                                description: createRoomError?.message || "Failed to create chat room.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            chatRoom = newRoom;
+                          }
+                          if (!chatRoom) return;
+                          // Ensure user is a participant
+                          const { data: participant } = await supabase
+                            .from('chat_participants')
+                            .select('id')
+                            .eq('room_id', chatRoom.id)
+                            .eq('user_id', profile.id)
+                            .single();
+                          if (!participant) {
+                            const { error: addParticipantError } = await supabase
+                              .from('chat_participants')
+                              .insert([
+                                { room_id: chatRoom.id, user_id: profile.id }
+                              ]);
+                            if (addParticipantError) {
+                              toast({
+                                title: "Error",
+                                description: addParticipantError.message || "Failed to join chat room.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                          }
+                          // Redirect to chat room
+                          if (chatRoom) router.push(`/chat/${chatRoom.id}`);
+                        }}
+                      >
+                        Chat
+                      </Button>
+                    </>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* CTA Section */}
@@ -225,7 +304,9 @@ export function LandingPage() {
         onModeChange={setAuthMode}
       />
 
-      <Button onClick={() => alert("Test button works!")}>Test Button</Button>
+      <footer className="mt-16 py-8 bg-white border-t text-center text-gray-500 text-sm">
+        © {new Date().getFullYear()} CampusConnect. All rights reserved.
+      </footer>
     </div>
   )
 }

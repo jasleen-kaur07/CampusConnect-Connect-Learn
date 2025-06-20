@@ -184,6 +184,11 @@ export function Chat({ roomId }: ChatProps) {
     }
   }
 
+  // Remove duplicate users by id before rendering
+  const uniqueConnections = Array.isArray(connections)
+    ? connections.filter((user, idx, arr) => arr.findIndex(u => u.id === user.id) === idx)
+    : [];
+
   if (roomId) {
     // Group/collaboration chat UI
     return (
@@ -252,7 +257,7 @@ export function Chat({ roomId }: ChatProps) {
             <p className="text-gray-500">No connections yet</p>
           ) : (
             <div className="space-y-2">
-              {Array.isArray(connections) && connections.map((user) => (
+              {uniqueConnections.map((user) => (
                 <div
                   key={user.id}
                   className={`flex items-center space-x-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${

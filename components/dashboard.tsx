@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation"
 
 export function Dashboard() {
   const { profile, signOut } = useAuth()
-  const [activeTab, setActiveTab] = useState("events")
+  const [activeTab, setActiveTab] = useState("profile")
   const [showSearch, setShowSearch] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [showNotifications, setShowNotifications] = useState(false)
@@ -85,16 +85,8 @@ export function Dashboard() {
                   Chat
                 </Link>
               </Button>
-              {/* Search Icon */}
-              <Button variant="ghost" size="sm" onClick={() => setShowSearch(true)}>
-                <Search className="w-4 h-4" />
-              </Button>
-              {/* Notification Icon */}
-              <Button variant="ghost" size="sm" onClick={handleEnableNotifications}>
-                <Bell className="w-4 h-4" />
-              </Button>
               {/* Avatar */}
-              <Avatar className="w-8 h-8 cursor-pointer" onClick={() => router.push("/profile") }>
+              <Avatar className="w-8 h-8 cursor-pointer" onClick={() => setActiveTab("profile") }>
                 <AvatarImage src={profile.profile_image_url || ""} />
                 <AvatarFallback>
                   {profile.full_name

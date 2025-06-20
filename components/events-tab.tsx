@@ -351,77 +351,90 @@ export function EventsTab() {
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {events.map((event) => (
-          <Card key={event.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg">{event.title}</CardTitle>
-                  <CardDescription>by {event.profiles.full_name}</CardDescription>
+        {events.map((event) => {
+          const isCompleted = new Date(event.start_date) < new Date();
+          return (
+            <Card
+              key={event.id}
+              className={isCompleted ? "border-green-600 bg-green-50" : ""}
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">{event.title}</CardTitle>
+                    <CardDescription>by {event.profiles.full_name}</CardDescription>
+                  </div>
+                  <div className="flex flex-col items-end space-y-1">
+                    <Badge variant="outline">{event.event_type}</Badge>
+                    {isCompleted ? (
+                      <Badge variant="secondary" className="text-green-700 border-green-600 bg-green-100 font-bold text-base">Completed</Badge>
+                    ) : (
+                      <Badge variant="default">{event.status}</Badge>
+                    )}
+                  </div>
                 </div>
-                <Badge variant="outline">{event.event_type}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{event.description}</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{event.description}</p>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center text-gray-600 dark:text-gray-400">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  {new Date(event.start_date).toLocaleDateString()} at{" "}
-                  {new Date(event.start_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </div>
-                {event.location && (
+                <div className="space-y-2 text-sm">
                   <div className="flex items-center text-gray-600 dark:text-gray-400">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {event.location}
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {new Date(event.start_date).toLocaleDateString()} at{" "}
+                    {new Date(event.start_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                  {event.location && (
+                    <div className="flex items-center text-gray-600 dark:text-gray-400">
+                      <MapPin className="w-4 h-4 mr-2" />
+                      {event.location}
+                    </div>
+                  )}
+                  <div className="flex items-center text-gray-600 dark:text-gray-400">
+                    <Users className="w-4 h-4 mr-2" />
+                    {event.current_participants} participants
+                    {event.max_participants && ` / ${event.max_participants}`}
+                  </div>
+                </div>
+
+                {event.tags && event.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {event.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
                   </div>
                 )}
-                <div className="flex items-center text-gray-600 dark:text-gray-400">
-                  <Users className="w-4 h-4 mr-2" />
-                  {event.current_participants} participants
-                  {event.max_participants && ` / ${event.max_participants}`}
-                </div>
-              </div>
 
-              {event.tags && event.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {event.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              {profile?.role === "student" && (
-                <div className="pt-2">
-                  {registeredEvents.has(event.id) ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleUnregisterFromEvent(event.id)}
-                      className="w-full"
-                    >
-                      Unregister
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => handleRegisterForEvent(event.id)}
-                      className="w-full"
-                      disabled={event.max_participants ? event.current_participants >= event.max_participants : false}
-                    >
-                      {event.max_participants && event.current_participants >= event.max_participants
-                        ? "Full"
-                        : "Register"}
-                    </Button>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                {profile?.role === "student" && (
+                  <div className="pt-2">
+                    {registeredEvents.has(event.id) ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUnregisterFromEvent(event.id)}
+                        className="w-full"
+                      >
+                        Unregister
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => handleRegisterForEvent(event.id)}
+                        className="w-full"
+                        disabled={event.max_participants ? event.current_participants >= event.max_participants : false}
+                      >
+                        {event.max_participants && event.current_participants >= event.max_participants
+                          ? "Full"
+                          : "Register"}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       {events.length === 0 && (

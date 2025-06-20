@@ -340,28 +340,12 @@ export function ConnectionRequests() {
       </Card>
 
       <div className="flex items-center space-x-8">
-        <Button variant="ghost" size="sm" onClick={() => setShowSearch(true)}>
-          <Search className="w-8 h-8" />
-        </Button>
-        <Button variant="ghost" size="sm" onClick={handleEnableNotifications}>
-          <Bell className="w-8 h-8" />
-        </Button>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/connections">Connections</Link>
         </Button>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/chat">Chat</Link>
         </Button>
-        <Avatar className="w-12 h-12 cursor-pointer" onClick={() => router.push('/profile')}>
-          <AvatarImage src={profile.profile_image_url || ""} />
-          <AvatarFallback>
-            {profile.full_name
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
       </div>
 
       {showSearch && (
