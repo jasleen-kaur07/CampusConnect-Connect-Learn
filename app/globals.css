@@ -1,9 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  background-color: #f8fafc;
+  color: #1e293b;
+  transition: background 0.2s, color 0.2s;
+  min-height: 100vh;
+  line-height: 1.6;
 }
 
 @layer utilities {
@@ -86,9 +92,41 @@ body {
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border transition-colors duration-200;
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', Arial, Helvetica, sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
   }
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #0f172a;
+  }
+  a {
+    color: #2563eb;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  a:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+  }
+}
+
+/* 3D Hover Effect */
+.hover-3d {
+  transition: transform 0.15s cubic-bezier(0.4,0,0.2,1), box-shadow 0.15s cubic-bezier(0.4,0,0.2,1);
+  will-change: transform, box-shadow;
+}
+.hover-3d:hover, .hover-3d:focus-visible {
+  transform: translateY(-4px) scale(1.04);
+  box-shadow: 0 8px 24px 0 rgba(37, 99, 235, 0.10), 0 1.5px 6px 0 rgba(16, 30, 54, 0.08);
+  z-index: 1;
+}
+.hover-3d:active {
+  transform: translateY(-1px) scale(0.98);
+  box-shadow: 0 2px 8px 0 rgba(37, 99, 235, 0.08);
 }

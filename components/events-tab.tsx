@@ -117,9 +117,19 @@ export function EventsTab() {
         tags: newEvent.tags ? newEvent.tags.split(",").map((tag) => tag.trim()) : null,
       }
 
-      const { error } = await supabase.from("events").insert([eventData])
+      // Insert the event and get the new event's ID
+      const { data: event, error: eventError } = await supabase
+        .from('events')
+        .insert([eventData])
+        .select()
+        .single();
 
-      if (error) throw error
+      if (eventError) throw eventError;
+
+      // Register the creator as a participant
+      await supabase.from('event_registrations').insert([
+        { event_id: event.id, user_id: profile.id }
+      ]);
 
       toast({
         title: "Event created!",

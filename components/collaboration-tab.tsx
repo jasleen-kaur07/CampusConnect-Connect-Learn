@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { useRouter } from "next/navigation"
 
 interface Collaboration {
   id: string
@@ -36,6 +37,7 @@ interface Collaboration {
     full_name: string
     role: string
   }
+  collaboration_members: { user_id: string }[]
 }
 
 export function CollaborationTab() {
@@ -45,6 +47,7 @@ export function CollaborationTab() {
   const [filter, setFilter] = useState<"all" | "open" | "my_requests" | "mentoring">("all")
   const { profile } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
 
   const [newCollaboration, setNewCollaboration] = useState({
     title: "",
@@ -71,6 +74,9 @@ export function CollaborationTab() {
           mentor:mentor_id (
             full_name,
             role
+          ),
+          collaboration_members (
+            user_id
           )
         `)
 
@@ -114,9 +120,33 @@ export function CollaborationTab() {
         duration_weeks: newCollaboration.duration_weeks ? Number.parseInt(newCollaboration.duration_weeks) : null,
       }
 
-      const { error } = await supabase.from("collaborations").insert([collaborationData])
+      // Insert the collaboration and get its ID
+      const { data: collab, error: collabError } = await supabase
+        .from('collaborations')
+        .insert([collaborationData])
+        .select()
+        .single();
+      if (collabError) throw collabError;
 
-      if (error) throw error
+      // Create a chat room for this collaboration
+      const { data: chatRoom, error: chatRoomError } = await supabase
+        .from('chat_rooms')
+        .insert([
+          {
+            name: collab.title,
+            type: 'collaboration',
+            reference_id: collab.id,
+            created_by: profile.id,
+          }
+        ])
+        .select()
+        .single();
+      if (chatRoomError) throw chatRoomError;
+
+      // Add the creator as a chat participant
+      await supabase.from('chat_participants').insert([
+        { room_id: chatRoom.id, user_id: profile.id }
+      ]);
 
       toast({
         title: "Collaboration request created!",
@@ -377,9 +407,31 @@ export function CollaborationTab() {
                 {/* Faculty can accept open collaborations */}
                 {profile?.role === "faculty" &&
                   collaboration.status === "open" &&
-                  collaboration.requester_id !== profile.id && (
-                    <Button size="sm" onClick={() => handleAcceptCollaboration(collaboration.id)} className="w-full">
-                      Accept & Mentor
+                  collaboration.requester_id !== profile.id &&
+                  !(collaboration.collaboration_members || []).some(m => m.user_id === profile.id) && (
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        await supabase.from('collaboration_members').insert([
+                          { collaboration_id: collaboration.id, user_id: profile.id }
+                        ]);
+                        // Find the chat room for this collaboration
+                        const { data: chatRoom } = await supabase
+                          .from('chat_rooms')
+                          .select('id')
+                          .eq('reference_id', collaboration.id)
+                          .eq('type', 'collaboration')
+                          .single();
+                        if (chatRoom) {
+                          await supabase.from('chat_participants').insert([
+                            { room_id: chatRoom.id, user_id: profile.id }
+                          ]);
+                        }
+                        fetchCollaborations();
+                      }}
+                      className="w-full"
+                    >
+                      Contribute
                     </Button>
                   )}
 
@@ -403,6 +455,28 @@ export function CollaborationTab() {
                     Completed
                   </div>
                 )}
+
+                {profile?.role === "student" &&
+                  (collaboration.collaboration_members || []).some(m => m.user_id === profile.id) && (
+                    <Button
+                      size="sm"
+                      className="w-full mt-2"
+                      onClick={async () => {
+                        // Find the chat room for this collaboration
+                        const { data: chatRoom } = await supabase
+                          .from('chat_rooms')
+                          .select('id')
+                          .eq('reference_id', collaboration.id)
+                          .eq('type', 'collaboration')
+                          .single();
+                        if (chatRoom) {
+                          router.push(`/chat/${chatRoom.id}`);
+                        }
+                      }}
+                    >
+                      Open Chat
+                    </Button>
+                  )}
               </div>
             </CardContent>
           </Card>

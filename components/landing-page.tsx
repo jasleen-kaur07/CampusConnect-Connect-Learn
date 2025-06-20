@@ -1,14 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Calendar, MessageCircle, BookOpen, Lightbulb, Award } from "lucide-react"
 import { AuthModal } from "@/components/auth-modal"
+import { supabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
+import { Chat } from "@/components/chat"
 
 export function LandingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin")
+  const [collaborations, setCollaborations] = useState([])
+  const [collaborationError, setCollaborationError] = useState(null)
+  const router = useRouter()
 
   const handleGetStarted = () => {
     setAuthMode("signup")
@@ -19,6 +25,65 @@ export function LandingPage() {
     setAuthMode("signin")
     setShowAuthModal(true)
   }
+
+  const isCreator = collaboration.requester_id === profile.id;
+  const isMember = collaboration.collaboration_members?.some(
+    (member) => member.user_id === profile.id
+  );
+
+  const handleJoinCollaboration = async (collaborationId) => {
+    const { error } = await supabase.from('collaboration_members').insert([
+      { collaboration_id: collaborationId, user_id: profile.id }
+    ]);
+    if (!error) {
+      // Optionally show a toast and refresh the list
+      fetchCollaborations();
+    }
+
+    console.log("collaboration.id:", collaboration.id);
+
+    const { data: chatRoom, error: chatRoomError } = await supabase
+      .from('chat_rooms')
+      .select('id')
+      .eq('reference_id', collaboration.id)
+      .eq('type', 'collaboration')
+      .single();
+
+    if (chatRoomError) {
+      console.error(chatRoomError);
+    }
+
+    if (chatRoom) {
+      await supabase.from('chat_participants').insert([
+        { room_id: chatRoom.id, user_id: profile.id }
+      ]);
+      router.push(`/chat/${chatRoom.id}`);
+    }
+  };
+
+  useEffect(() => {
+    const fetchCollaborations = async () => {
+      const { data, error } = await supabase
+        .from('collaborations')
+        .select(`
+          *,
+          requester:requester_id (
+            full_name,
+            role
+          ),
+          mentor:mentor_id (
+            full_name,
+            role
+          ),
+          collaboration_members (
+            user_id
+          )
+        `);
+      setCollaborations(data || []);
+      setCollaborationError(error);
+    };
+    fetchCollaborations();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
@@ -104,6 +169,41 @@ export function LandingPage() {
               <CardDescription>Showcase your projects, research, and achievements</CardDescription>
             </CardHeader>
           </Card>
+
+          {profile?.role === "student" &&
+            collaboration.status === "open" &&
+            collaboration.requester_id !== profile.id &&
+            !(collaboration.collaboration_members || []).some(m => m.user_id === profile.id) && (
+              <Button
+                size="sm"
+                onClick={async () => {
+                  await supabase.from('collaboration_members').insert([
+                    { collaboration_id: collaboration.id, user_id: profile.id }
+                  ]);
+                  fetchCollaborations();
+                }}
+                className="w-full"
+              >
+                Contribute
+              </Button>
+            )
+          }
+          {profile && (collaboration.collaboration_members || []).some(m => m.user_id === profile.id) && (
+            <>
+              <span className="text-green-600 font-semibold block w-full text-center">You're a contributor</span>
+              <Button
+                size="sm"
+                className="w-full mt-2"
+                onClick={() => {
+                  console.log("Test button clicked!");
+                  alert("Test button clicked!");
+                  router.push("/chat/test");
+                }}
+              >
+                Test Open Chat
+              </Button>
+            </>
+          )}
         </div>
       </section>
 
@@ -111,7 +211,7 @@ export function LandingPage() {
       <section className="bg-blue-600 text-white py-20">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Campus Experience?</h2>
-          <p className="text-xl mb-8 opacity-90">Join thousands of students and faculty already using CampusConnect</p>
+          <p className="text-xl mb-8 opacity-90">Let's create the CampusConnect community together—be among the first to connect, collaborate, and shape the future!</p>
           <Button onClick={handleGetStarted} size="lg" variant="secondary" className="text-lg px-8 py-3">
             Start Connecting Today
           </Button>
@@ -124,6 +224,8 @@ export function LandingPage() {
         mode={authMode}
         onModeChange={setAuthMode}
       />
+
+      <Button onClick={() => alert("Test button works!")}>Test Button</Button>
     </div>
   )
 }

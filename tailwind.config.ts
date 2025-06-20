@@ -11,19 +11,24 @@ const config: Config = {
   theme: {
   	extend: {
   		colors: {
-  			background: 'hsl(var(--background))',
-  			foreground: 'hsl(var(--foreground))',
+  			primary: {
+  				DEFAULT: '#2563eb',
+  				foreground: '#ffffff',
+  			},
+  			accent: {
+  				DEFAULT: '#e0e7ff',
+  				foreground: '#2563eb',
+  			},
+  			background: '#f8fafc',
+  			foreground: '#1e293b',
+  			border: '#e5e7eb',
   			card: {
-  				DEFAULT: 'hsl(var(--card))',
-  				foreground: 'hsl(var(--card-foreground))'
+  				DEFAULT: '#ffffff',
+  				foreground: '#1e293b',
   			},
   			popover: {
   				DEFAULT: 'hsl(var(--popover))',
   				foreground: 'hsl(var(--popover-foreground))'
-  			},
-  			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
   			},
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
@@ -33,15 +38,10 @@ const config: Config = {
   				DEFAULT: 'hsl(var(--muted))',
   				foreground: 'hsl(var(--muted-foreground))'
   			},
-  			accent: {
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
-  			},
   			destructive: {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
-  			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
   			chart: {
@@ -52,20 +52,20 @@ const config: Config = {
   				'5': 'hsl(var(--chart-5))'
   			},
   			sidebar: {
-  				DEFAULT: 'hsl(var(--sidebar-background))',
-  				foreground: 'hsl(var(--sidebar-foreground))',
-  				primary: 'hsl(var(--sidebar-primary))',
-  				'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-  				accent: 'hsl(var(--sidebar-accent))',
-  				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-  				border: 'hsl(var(--sidebar-border))',
-  				ring: 'hsl(var(--sidebar-ring))'
+  				DEFAULT: '#f1f5f9',
+  				foreground: '#1e293b',
+  				primary: '#2563eb',
+  				'primary-foreground': '#ffffff',
+  				accent: '#e0e7ff',
+  				'accent-foreground': '#2563eb',
+  				border: '#e5e7eb',
+  				ring: '#2563eb',
   			}
   		},
   		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			lg: '1rem',
+  			md: '0.75rem',
+  			sm: '0.5rem',
   		},
   		keyframes: {
   			'accordion-down': {
@@ -88,7 +88,11 @@ const config: Config = {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
-  		}
+  		},
+  		boxShadow: {
+  			card: '0 2px 8px 0 rgba(16, 30, 54, 0.06)',
+  			button: '0 1px 3px 0 rgba(16, 30, 54, 0.08)',
+  		},
   	}
   },
   plugins: [require("tailwindcss-animate")],

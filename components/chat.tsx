@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
+import { useParams } from "next/navigation"
 
 interface User {
   id: string
@@ -25,7 +26,11 @@ interface Message {
   receiver: User
 }
 
-export function Chat() {
+interface ChatProps {
+  roomId?: string;
+}
+
+export function Chat({ roomId }: ChatProps) {
   const { profile } = useAuth()
   const { toast } = useToast()
   const [connections, setConnections] = useState<User[]>([])
@@ -35,17 +40,25 @@ export function Chat() {
   const [loading, setLoading] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // For group chat: fetch messages for the room
   useEffect(() => {
-    if (profile) {
+    if (roomId && profile) {
+      fetchRoomMessages(roomId)
+    }
+  }, [roomId, profile])
+
+  // For direct chat: fetch connections and messages
+  useEffect(() => {
+    if (!roomId && profile) {
       fetchConnections()
     }
-  }, [profile])
+  }, [profile, roomId])
 
   useEffect(() => {
-    if (selectedUser) {
+    if (!roomId && selectedUser) {
       fetchMessages(selectedUser.id)
     }
-  }, [selectedUser])
+  }, [selectedUser, roomId])
 
   useEffect(() => {
     scrollToBottom()
@@ -53,6 +66,27 @@ export function Chat() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  const fetchRoomMessages = async (roomId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select(`*, sender:profiles!messages_sender_id_fkey(*)`)
+        .eq("room_id", roomId)
+        .order("created_at", { ascending: true })
+      if (error) throw error
+      setMessages(Array.isArray(data) ? data : [])
+    } catch (error) {
+      setMessages([])
+      toast({
+        title: "Error",
+        description: "Failed to fetch messages",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const fetchConnections = async () => {
@@ -116,26 +150,92 @@ export function Chat() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim() || !selectedUser) return
+    if (!newMessage.trim()) return
     try {
-      const { error } = await supabase
-        .from("messages")
-        .insert({
+      if (roomId) {
+        // Group/collaboration chat
+        const { error } = await supabase.from("messages").insert({
           sender_id: profile?.id,
-          receiver_id: selectedUser.id,
+          room_id: roomId,
           content: newMessage.trim(),
         })
-      if (error) throw error
-      setNewMessage("")
-      fetchMessages(selectedUser.id)
+        if (error) throw error
+        setNewMessage("")
+        fetchRoomMessages(roomId)
+      } else if (selectedUser) {
+        // Direct chat
+        const { error } = await supabase
+          .from("messages")
+          .insert({
+            sender_id: profile?.id,
+            receiver_id: selectedUser.id,
+            content: newMessage.trim(),
+          })
+        if (error) throw error
+        setNewMessage("")
+        fetchMessages(selectedUser.id)
+      }
     } catch (error) {
-      console.error("Error sending message:", error)
       toast({
         title: "Error",
         description: "Failed to send message",
         variant: "destructive",
       })
     }
+  }
+
+  if (roomId) {
+    // Group/collaboration chat UI
+    return (
+      <Card className="w-full max-w-2xl mx-auto flex flex-col h-[600px]">
+        <CardHeader>
+          <CardTitle>Collaboration Chat</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+            {Array.isArray(messages) && messages.map((message) => {
+              const isMe = message.sender_id === profile?.id;
+              return (
+                <div
+                  key={message.id}
+                  className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[70%] rounded-lg p-3 ${
+                      isMe
+                        ? "bg-blue-500 text-white rounded-br-none"
+                        : "bg-gray-100 text-gray-900 rounded-bl-none"
+                    }`}
+                  >
+                    <div className="flex items-center mb-1">
+                      <Avatar className="h-6 w-6 mr-2">
+                        <AvatarImage src={message.sender?.profile_image_url || undefined} />
+                        <AvatarFallback>{message.sender?.full_name?.[0]}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium text-xs">{message.sender?.full_name}</span>
+                    </div>
+                    <p>{message.content}</p>
+                    <p className="text-xs mt-1 opacity-70 text-right">
+                      {new Date(message.created_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+          <form onSubmit={sendMessage} className="flex space-x-2">
+            <Input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1"
+            />
+            <Button type="submit">Send</Button>
+          </form>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
